@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User{
+  id                String            @id @default(uuid())
+  firstname         String        
+  lastname          String
+  email             String            @unique
+  wallet            Wallet?
+}
+
+model Wallet{
+  id                String            @id @default(uuid())
+  privateKey        String            
+  publicKey         String
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id])
+  transactions      Transaction[]
+}
+
+model Transaction{
+  id                String            @id @default(uuid())
+  amount            Decimal           @db.Decimal(18, 2)
+  type              TransactionType
+  currency          String            @default("USD")
+  status            TransactionStatus @default(PENDING)
+  referenceId       String?
+  metadata          Json
+  walletId          String
+  wallet            Wallet            @relation(fields: [walletId], references: [id])
+}
+
+enum TransactionType{
+  DEBIT
+  CREDIT
+}
+
+enum TransactionStatus{
+  PENDING 
+  CONFIRMED
+  REJECTED
+}
+
+model PaymentSession {
+  id             String   @id @default(cuid())
+  userId         String
+  type           TransactionType
+  amount         Decimal  @db.Decimal(18, 2)
+  currency       String   @default("USD")
+  status         PaymentSessionStatus @default(PENDING)
+  provider       String // e.g., Stripe, Razorpay
+  providerRef    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum PaymentSessionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model WebhookEvent {
+  id             String   @id @default(cuid())
+  provider       String
+  eventType      String
+  payload        Json
+  processed      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
